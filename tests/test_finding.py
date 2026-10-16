@@ -65,3 +65,15 @@ def test_a_known_label_matches_whole_numbers_only():
         ["18", "100"],
         ["1"],
     )
+
+
+def test_a_number_inside_a_string_cell_is_a_label_and_counts_as_found():
+    rows = [{"provincie": "Brussel (19 gemeenten)", "value": 1950}]
+    assert trace_numbers("Brussel (19 gemeenten) telt 1.950 leden.", rows) == (["19", "1.950"], [])
+
+
+def test_a_list_marker_is_not_a_number():
+    assert trace_numbers("1. Gent telt 8566 leden.\n2) Leuven 3.506.", ROWS) == (
+        ["8566", "3.506"],
+        [],
+    )

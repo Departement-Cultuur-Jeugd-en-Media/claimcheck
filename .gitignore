@@ -10,5 +10,5 @@ wheels/
 .venv
 
 # Local experiment output
-runs/
+/runs/
 *.duckdb

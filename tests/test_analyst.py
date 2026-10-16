@@ -64,8 +64,10 @@ def test_a_bad_tool_input_is_an_error_result_and_the_loop_goes_on(session):
     finding, trace = answer(session, "Hoe oud is de leiding?", client)
     first = client.requests[1]["messages"][2]["content"][0]
     assert first["tool_use_id"] == "t1" and "error" in first["content"]
+    assert first["is_error"] is True
     second = client.requests[2]["messages"][4]["content"][0]
-    assert json.loads(second["content"])["type"] == "Error"
+    assert json.loads(second["content"])["type"] == "Error" and "is_error" not in second
+    assert trace["usage"][0]["stop_reason"] == "tool_use"
     assert finding.gaps[0].asked == "leeftijd"
 
 
@@ -87,3 +89,17 @@ def test_the_host_draft_is_the_text_of_one_call_without_tools(session):
     client = Replay([{"content": [{"type": "text", "text": "Concept. Leuven telt 3.506 leden."}]}])
     text, usage = write_draft([], client)
     assert text.startswith("Concept") and "tools" not in client.requests[0]
+
+
+def test_a_statement_sent_as_a_string_is_an_error_result_not_a_crash(session):
+    client = Replay(
+        [
+            turn(
+                use("t1", "finalize", {"reading": "x", "statements": ["Leuven telt 3.506 leden."]})
+            ),
+            turn(use("t2", "finalize", {"reading": "x", "statements": []})),
+        ]
+    )
+    finding, trace = answer(session, "?", client)
+    assert "error" in client.requests[1]["messages"][2]["content"][0]["content"]
+    assert finding is not None

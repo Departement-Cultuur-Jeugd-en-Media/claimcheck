@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from claimcheck.finding import NUMBER, PERIOD, readings, trace_numbers
 
 MARKER = re.compile(r"\b(concept|ontwerp)\b", re.IGNORECASE)
-SOURCES = re.compile(r"^\s*bron(nen)?\b", re.IGNORECASE | re.MULTILINE)
+SOURCES = re.compile(r"^\W*bron(nen)?(lijst)?\b", re.IGNORECASE | re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class DraftCheck:
     traced: list[str]
     untraced: list[str]
     marker: bool  # the text says concept or ontwerp
-    sources: bool  # a line starting with Bron or Bronnen
+    sources: bool  # a heading line Bron, Bronnen or Bronnenlijst
 
 
 def check_draft(text: str, statements: Iterable[str], known: Iterable[str] = ()) -> DraftCheck:
