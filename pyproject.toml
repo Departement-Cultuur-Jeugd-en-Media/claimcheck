@@ -18,9 +18,14 @@ classifiers = [
     "Topic :: Database",
 ]
 dependencies = [
+    "anthropic>=1.15.0",
     "duckdb>=1.1",
+    "fastmcp>=4.1.0",
     "pyyaml>=6.0",
 ]
+
+[project.scripts]
+claimcheck = "claimcheck.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Departement-Cultuur-Jeugd-en-Media/claimcheck"

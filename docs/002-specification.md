@@ -124,7 +124,7 @@ conditions:
 |---|---|---|---|
 | `filter` | `named_exclusion` | `values` | the filter names one of the values on that dimension |
 | `filter`, `group` | `meaning_of_dimension` | none | the dimension is filtered or grouped (it always fails: the sentence must reach the reader) |
-| `over_time` | `kind_of_measure` | none | the measure (or a ratio built on it) is a stock and `mode` is `sum`; a `derive` between two periods is not a sum and passes |
+| `over_time` | `kind_of_measure` | none | `mode` is `sum` on the measure or a ratio built on it; the owner binds this kind to a stock, the checker does not re-derive the kind; a `derive` between two periods is not a sum and passes |
 | `over_time`, `derive` | `validity_window` | `breaks_at` or `reliable_from` | with `breaks_at`: the dimension is in the claim's filters or groups and the span crosses it; with `reliable_from`: the requested span starts before it |
 | `compare_across_places` | `comparison_ratio` | `per` | the comparison is on the measure rather than on its `per` ratio |
 | `group` | `completeness` | none | the result holds null values of the measure (evaluated after the query ran) |
@@ -260,7 +260,7 @@ The engine (`query.py`):
 2. Applies defaults. A missing `period` becomes the period the `default_reading` on the period dimension names. A dimension with a `default_reading` that is neither filtered nor grouped gets the default as a filter. Each applied default is recorded as a `default` operation. A query with `change` has no period; the two werkjaren are the period.
 3. Derives the operations (section 2) into a `Claim` fragment.
 4. Runs the checker's *before* phase on that fragment. A failed blocking verdict stops here: the engine returns a `Refusal` carrying the sentence and the alternative, and no SQL runs.
-5. Compiles and runs the SQL on DuckDB. A ratio is compiled as `scale * sum(numerator) / nullif(sum(denominator), 0)` from the joined tables. A `change` is compiled as one query over the two werkjaren, pivoted per group into `value_a`, `value_b`, `delta` and `delta_pct`; the model never computes a growth rate itself, it reads it from a row.
+5. Compiles and runs the SQL on DuckDB. A ratio is compiled as `scale * sum(numerator) / nullif(sum(denominator), 0)` from the joined tables, with the numerator aggregated to the denominator's grain (gemeente and jaar) before the join and counted only where the denominator exists, so leden without a bevolkingsnoemer fall out of every ratio, as the owner's definition says. A measure on another table than the hub is evaluated over the same cells, so it counts the gemeenten that have a group in the period; `describe` says so next to the measure. A `change` is compiled as one query over the two werkjaren, pivoted per group into `value_a`, `value_b`, `delta` and `delta_pct`; the model never computes a growth rate itself, it reads it from a row.
 6. Runs the checker's *after* phase on the rows (completeness).
 7. Returns a `Result`: the query id, the rows, the claim fragment and all verdicts.
 
@@ -375,7 +375,7 @@ questions:
       operations: [compare_across_places]
       conditions: [vergelijk-per-100-jongeren]     # ids that must appear in the finding's verdicts
       refusal: false
-      numbers: [29.4, 25.3]                        # must appear in a surviving data statement
+      numbers: [27.0, 25.1]                        # must appear in a surviving data statement; the latest werkjaar in the data (2025-2026), since the question names no period
 
 scenarios:
   - id: beleidsnota-jeugdbewegingen
@@ -422,7 +422,7 @@ scenarios:
           draft_sources: true
 ```
 
-Scores per finding, computed from `expect`: *conditions* (every expected id is among the verdicts), *refusal* (matches), *numbers* (every expected number survives), *answered* (a finding exists), *boundary* (the basis and gap expectations hold), *draft* (the draft check is clean). Across the five runs of one question: *sameness* (identical claims; identical surviving numbers). Cost and latency are logged per run. Expert scoring of the prose is a later round and not automated.
+Scores per finding, computed from `expect`: *conditions* (every expected id is among the verdicts), *refusal* (a query was refused, that is a blocking verdict failed, exactly when expected; a model that reads the prose and never asks for the forbidden reading scores the condition as passed and the refusal as not needed), *numbers* (every expected number survives), *answered* (a finding exists), *boundary* (the basis and gap expectations hold), *draft* (the draft check is clean). Across the five runs of one question: *sameness* (identical claims; identical surviving numbers). Cost and latency are logged per run. Expert scoring of the prose is a later round and not automated.
 
 ## 11. Out of scope in version 0
 

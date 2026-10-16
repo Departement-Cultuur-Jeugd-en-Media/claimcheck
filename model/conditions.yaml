@@ -1,0 +1,91 @@
+version: 1
+dataset: jeugdbewegingen
+conditions:
+  - id: leden-is-een-standcijfer
+    kind: kind_of_measure
+    fires_on: [over_time]
+    applies_to: { measure: leden }
+    authority: blocks
+    statement: "Ledenaantallen zijn standcijfers per werkjaar: optellen over werkjaren telt dezelfde leden opnieuw."
+    alternative: "Toon een reeks per werkjaar, kies één werkjaar, of vraag de verandering tussen twee werkjaren."
+    source: trust/sources/ledenaantallen.yml, scope_default.note
+
+  - id: bevolking-is-een-standcijfer
+    kind: kind_of_measure
+    fires_on: [over_time]
+    applies_to: { measure: jongeren_7_18 }
+    authority: blocks
+    statement: "Bevolkingscijfers zijn standcijfers per kalenderjaar en worden niet opgeteld over jaren."
+    alternative: "Kies één jaar, toon een reeks, of vraag de verandering tussen twee jaren."
+    source: trust/sources/bevolking.yml, scope_default.note
+
+  - id: reeks-begint-in-2017-2018
+    kind: validity_window
+    fires_on: [over_time, derive]
+    applies_to: { measure: leden }
+    reliable_from: "2017-2018"
+    authority: warns
+    statement: "De ledenaantallen beginnen in werkjaar 2017-2018; een langere terugblik is niet mogelijk met deze gegevens."
+    source: universe.yml, period.Ledenaantallen
+
+  - id: vergelijk-per-100-jongeren
+    kind: comparison_ratio
+    fires_on: [compare_across_places]
+    applies_to: { measure: leden }
+    authority: warns
+    per: leden_per_100_jongeren
+    statement: "Vergelijk gemeenten op leden per 100 jongeren van 7 tot 18, niet op het ruwe aantal: een grotere gemeente heeft meer leden."
+    source: metrics/members_count.yml, per
+
+  - id: gemeente-is-de-gemeente-van-de-groep
+    kind: meaning_of_dimension
+    fires_on: [filter, group]
+    applies_to: { dimensions: [gemeente, provincie, gewest] }
+    authority: warns
+    statement: "De gemeente bij een ledenaantal is die waar de groep gevestigd is, niet waar de leden wonen: wie in een buurgemeente naar een groep gaat, telt mee in de gemeente van die groep."
+    source: trust/sources/ledenaantallen.yml, semantics.geografie
+
+  - id: wallonie-zit-er-niet-in
+    kind: named_exclusion
+    fires_on: [filter]
+    applies_to: { dimension: gewest }
+    values: [Waals Gewest]
+    authority: blocks
+    statement: "Wat Waalse jeugdbewegingen doen, zit niet in deze gegevens. Een groep met een Waalse gemeente is een groep van een erkende koepel met zetel in Wallonië."
+    alternative: "Vraag naar de groepen van de erkende koepels met zetel in Wallonië, of beperk de vraag tot Vlaanderen en Brussel."
+    source: universe.yml, outside.wallonie
+
+  - id: koepels-scharnierjaar-2024-2025
+    kind: validity_window
+    fires_on: [over_time, derive]
+    applies_to: { dimension: koepel }
+    breaks_at: "2024-2025"
+    authority: warns
+    statement: "Tot werkjaar 2023-2024 telt de reeks vijf koepels, vanaf 2024-2025 negen. Vergelijk de samenstelling per koepel niet over dat scharnierjaar heen; het totale ledental blijft wel vergelijkbaar."
+    source: trust/dimensions/jeugdbeweging.koepel_label.yml
+
+  - id: ratio-zonder-noemer
+    kind: completeness
+    fires_on: [group]
+    applies_to: { measure: leden_per_100_jongeren }
+    authority: warns
+    statement: "Leeg (niet nul) voor gemeenten zonder bevolkingsnoemer; hun leden tellen ook niet mee in hogere aggregaties."
+    source: trust/metrics/members_per_100_youth_7_18.yml
+
+  - id: zonder-periode-het-laatste-werkjaar
+    kind: default_reading
+    fires_on: [default]
+    applies_to: { dimension: werkjaar }
+    default: latest
+    authority: warns
+    statement: "Zonder genoemde periode geldt het meest recente werkjaar."
+    source: trust/sources/ledenaantallen.yml, scope_default
+
+  - id: leden-zonder-leiding
+    kind: default_reading
+    fires_on: [default]
+    applies_to: { dimension: type_deelnemer }
+    default: Leden
+    authority: warns
+    statement: "'Leden' zijn de leden zonder de leiding. Leden en leiding samen alleen wanneer de vraag de leiding meetelt."
+    source: defaults.yml, readings.leden
