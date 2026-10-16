@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#2A7F8E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+  <title>claimcheck</title>
+  <path d="M21 10h-9v44h9"/>
+  <path d="M43 10h9v44h-9"/>
+  <path d="M22 33l8 8 13-18"/>
+</svg>

@@ -1,0 +1,15 @@
+[tool.commitizen]
+# Conventional Commits drive the version: feat bumps minor, fix bumps patch, `!` bumps major.
+name = "cz_conventional_commits"
+# One source of truth for the version: [project].version in pyproject.toml.
+# The package reads it back through importlib.metadata, so nothing else carries a copy.
+version_provider = "pep621"
+tag_format = "v$version"
+# Stay in 0.x while the experiment runs: a breaking change bumps the minor, never 1.0.0 by accident.
+major_version_zero = true
+# `cz bump` rewrites CHANGELOG.md from the commit history and tags the bump commit.
+update_changelog_on_bump = true
+changelog_file = "CHANGELOG.md"
+# Annotated, so `git push --follow-tags` carries the tag with the bump commit.
+annotated_tag = true
+bump_message = "chore(release): bump version to $new_version"

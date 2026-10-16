@@ -1,0 +1,50 @@
+[project]
+name = "claimcheck"
+version = "0.1.0"
+description = "Right numbers, wrong answer. Checks how data is read against the conditions its owner wrote down."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Luk Verhelst", email = "luk.verhelst@gmail.com" }]
+requires-python = ">=3.13"
+keywords = ["conditions of use", "semantic layer", "data governance", "llm", "analytics", "validity"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+]
+dependencies = [
+    "duckdb>=1.1",
+    "pyyaml>=6.0",
+]
+
+[project.urls]
+Repository = "https://github.com/Departement-Cultuur-Jeugd-en-Media/claimcheck"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+    "commitizen>=4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/claimcheck"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
