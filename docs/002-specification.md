@@ -124,7 +124,7 @@ conditions:
 |---|---|---|---|
 | `filter` | `named_exclusion` | `values` | the filter names one of the values on that dimension |
 | `filter`, `group` | `meaning_of_dimension` | none | the dimension is filtered or grouped (it always fails: the sentence must reach the reader) |
-| `over_time` | `kind_of_measure` | none | the measure (or a ratio built on it) is a stock and `mode` is `sum`; a `derive` between two periods is not a sum and passes |
+| `over_time` | `kind_of_measure` | none | `mode` is `sum` on the measure or a ratio built on it; the owner binds this kind to a stock, the checker does not re-derive the kind; a `derive` between two periods is not a sum and passes |
 | `over_time`, `derive` | `validity_window` | `breaks_at` or `reliable_from` | with `breaks_at`: the dimension is in the claim's filters or groups and the span crosses it; with `reliable_from`: the requested span starts before it |
 | `compare_across_places` | `comparison_ratio` | `per` | the comparison is on the measure rather than on its `per` ratio |
 | `group` | `completeness` | none | the result holds null values of the measure (evaluated after the query ran) |
