@@ -44,6 +44,8 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+# The spec's code blocks are prose, not source.
+extend-exclude = ["docs"]
 target-version = "py313"
 
 [tool.ruff.lint]
