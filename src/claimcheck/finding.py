@@ -64,13 +64,14 @@ def trace_numbers(
     found, missing = [], []
     for token in NUMBER.findall(PERIOD.sub(" ", text)):
         ok = token in known_numbers or any(
-            round(c, p) == v for v, p in _readings(token) for c in cells
+            round(c, p) == v for v, p in readings(token) for c in cells
         )
         (found if ok else missing).append(token)
     return found, missing
 
 
-def _readings(token: str) -> list[tuple[float, int]]:
+def readings(token: str) -> list[tuple[float, int]]:
+    """The Dutch and the English reading of a number token, each with its precision."""
     readings = []
     for thousands, decimal in ((".", ","), (",", ".")):
         whole, _, frac = token.replace(thousands, "").partition(decimal)

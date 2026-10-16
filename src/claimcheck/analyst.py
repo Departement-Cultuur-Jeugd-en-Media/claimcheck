@@ -13,6 +13,11 @@ from claimcheck.tools import TOOLS, parse
 
 MODEL = "claude-opus-5-5"
 PROMPT = (Path(__file__).parent / "prompts" / "analyst.md").read_text()
+HOST = (
+    "Je bent de beleidsmedewerker. Schrijf een antwoordtekst voor de parlementaire vraag op basis "
+    "van de bevindingen hieronder, in het Nederlands. Gebruik alleen cijfers die in de bevindingen "
+    "staan, markeer de tekst als concept en sluit af met een bronnenlijst."
+)
 
 
 def answer(
@@ -73,3 +78,15 @@ def dumps(outcome) -> str:
     if isinstance(outcome, str):
         return outcome
     return json.dumps(outcome, ensure_ascii=False, default=lambda o: asdict(o))
+
+
+def write_draft(findings: list[Finding], client, model: str = MODEL) -> tuple[str, dict]:
+    """The host's own writing, stood in for by one call without tools over the session's
+    findings: the text to hand to `check_draft`, and the call's usage. claimcheck writes nothing
+    itself; in the MCP surface the human or the host model writes this text."""
+    content = json.dumps([asdict(f) for f in findings], ensure_ascii=False, default=str)
+    response = client.messages.create(
+        model=model, max_tokens=16000, system=HOST, messages=[{"role": "user", "content": content}]
+    ).to_dict()
+    text = "".join(b.get("text", "") for b in response["content"] if b["type"] == "text")
+    return text, response.get("usage", {})

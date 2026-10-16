@@ -11,7 +11,7 @@ import yaml
 from claimcheck.finding import NUMBER, trace_numbers
 
 ROOT = Path(__file__).resolve().parents[2]  # the repository: the harness runs from a checkout
-MEASURES = ("answered", "operations", "conditions", "refusal", "numbers", "boundary")
+MEASURES = ("answered", "operations", "conditions", "refusal", "numbers", "boundary", "draft")
 
 
 def questions(path: Path = ROOT / "model" / "questions.yaml") -> tuple[list, list]:
@@ -20,10 +20,21 @@ def questions(path: Path = ROOT / "model" / "questions.yaml") -> tuple[list, lis
     return doc["questions"], doc["scenarios"]
 
 
-def score(finding: dict | None, expect: dict) -> dict:
+def score(finding: dict | None, expect: dict, check: dict | None = None) -> dict:
     """The scores of one finding against its `expect`: True or False per measure the
-    expectation names, None for the rest; only `answered` when there is no finding."""
+    expectation names, None for the rest; only `answered` when there is no finding. A draft
+    turn has no finding and scores on its draft check: the untraced count, the marker and
+    the source list as expected."""
     row = dict.fromkeys(MEASURES)
+    if "draft" in expect:
+        row["answered"] = check is not None
+        if check is not None:
+            row["draft"] = (
+                len(check["untraced"]) == expect["draft_untraced"]
+                and check["marker"] == expect["draft_marker"]
+                and check["sources"] == expect["draft_sources"]
+            )
+        return row
     row["answered"] = finding is not None
     if finding is None:
         return row
