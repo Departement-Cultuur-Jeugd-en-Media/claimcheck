@@ -1,11 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Luk Verhelst
-"""One conversation over the dataset, and the tools the analyst holds (spec section 9).
-
-The arm decides what the conditions do: in A they are absent, in B `describe` shows them as
-the owner's sentences, in C they are also enforced, which means the engine applies their
-defaults and the checker runs on every claim.
-"""
+"""One conversation over the dataset, and the tools the analyst holds (spec section 9). The arm
+decides what the conditions do: absent in A, shown as the owner's sentences in B, and in C also
+enforced, which means the engine applies their defaults and the checker runs on every claim."""
 
 from dataclasses import dataclass, field
 
@@ -103,9 +100,11 @@ class Session:
         self._question.compares.append((op, verdicts))
         return verdicts
 
-    def finalize(self, reading: str, statements: list[Statement]) -> Finding:
-        """Close the open question with its finding, which stays on the session."""
+    def finalize(self, reading: str, statements: list[Statement], question: str = "") -> Finding:
+        """Close the open question with its finding, which stays on the session. A question
+        given here names a question that `query` opened without a text."""
         q = self._question
+        q.text = q.text or question
         outcomes = list(q.outcomes.values())
         rows = {o.id: o.rows for o in outcomes if isinstance(o, Result)}
         operations = [op for o in outcomes for op in o.claim.operations]
