@@ -10,7 +10,8 @@ from claimcheck.claim import Claim, Operation
 from claimcheck.query import Refusal
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
-PERIOD = re.compile(r"\b\d{4}-\d{4}\b|\b(?:19|20)\d{2}\b")  # a werkjaar or a year, not a number
+# A werkjaar, a year, or a list marker at the start of a line: not a number.
+PERIOD = re.compile(r"\b\d{4}-\d{4}\b|\b(?:19|20)\d{2}\b|^\s*\d+[.)]\s", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -58,9 +59,12 @@ def trace_numbers(
     """Every number in the text, split into those found among the numeric cells of the rows at
     the text's own precision and those not found. A number reads as Dutch (3.506 and 29,4) or
     as English (3,506 and 29.4); the sign is ignored; a werkjaar or a year is a period, not a
-    number; a number that occurs in one of the `known` strings (a measure's label) is found."""
+    number; a number that occurs in a `known` string (a measure's label) or in a string cell
+    (a dimension value such as "Brussel (19 gemeenten)") is a label and counts as found."""
+    rows = list(rows)
     cells = {abs(v) for r in rows for v in r.values() if type(v) in (int, float)}
-    known_numbers = {n for k in known for n in NUMBER.findall(k)}
+    labels = [v for r in rows for v in r.values() if isinstance(v, str)]
+    known_numbers = {n for k in [*known, *labels] for n in NUMBER.findall(k)}
     found, missing = [], []
     for token in NUMBER.findall(PERIOD.sub(" ", text)):
         ok = token in known_numbers or any(

@@ -59,3 +59,9 @@ def test_the_session_checks_a_draft_against_all_its_findings(session):
     session.finalize("Niets.", [])
     check = session.check_draft("Concept. Leuven telt 3.506 leden, Gent 8.566.")
     assert (check.traced, check.untraced, check.marker) == (["3.506"], ["8.566"], True)
+
+
+def test_a_markdown_heading_or_bold_bronnenlijst_is_a_source_list():
+    for heading in ("## Bronnenlijst", "### Bronnen", "**Bronnen**", "**Bronnenlijst**"):
+        assert check_draft(f"Tekst.\n\n{heading}\n1. Jeugdbewegingen in cijfers", []).sources
+    assert not check_draft("De bronnen zijn onduidelijk.", []).sources

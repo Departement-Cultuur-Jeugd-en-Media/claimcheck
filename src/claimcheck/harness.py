@@ -13,6 +13,7 @@ from pathlib import Path
 
 from claimcheck import conditions, semantic
 from claimcheck.analyst import MODEL, answer, write_draft
+from claimcheck.draft import check_draft
 from claimcheck.scoring import ROOT, questions, sameness, score, summary
 from claimcheck.session import Session
 
@@ -85,10 +86,23 @@ def run(
 
 
 def write_scores(directory: Path) -> str:
-    """Read every run under the directory, write `scores.csv` and `summary.md`, return the text."""
+    """Read every run under the directory, write `scores.csv` and `summary.md`, return the text.
+    Scores and draft checks are recomputed from the stored findings and drafts, so a change in
+    scoring or in the draft check applies to earlier runs."""
     records = [json.loads(p.read_text()) for p in sorted(directory.glob("*/*/*.json"))]
     if not records:
         return "Nothing ran."
+    labels = [m.label for m in semantic.load(ROOT / "model" / "semantic.yaml").measures.values()]
+    statements: dict[tuple, list[str]] = {}
+    for r in records:
+        if r["finding"]:
+            texts = [s["text"] for s in r["finding"]["data"]]
+            statements.setdefault((r["arm"], r["run"]), []).extend(texts)
+    for r in records:
+        if "draft" in r:
+            r["check"] = asdict(
+                check_draft(r["draft"], statements.get((r["arm"], r["run"]), []), labels)
+            )
     unit, scenarios = questions()
     turns = unit + [t for s in scenarios for t in s["turns"]]
     expects = {t["id"]: t["expect"] for t in turns}
