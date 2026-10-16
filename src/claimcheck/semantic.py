@@ -114,7 +114,8 @@ def _require(ok: bool, message: str) -> None:
 
 
 def _columns(file: Path) -> list[str]:
-    return [c[0] for c in duckdb.sql(f"describe select * from '{file}'").fetchall()]
+    # A connection of its own: the module-level default connection is not safe across threads.
+    return [c[0] for c in duckdb.connect().sql(f"describe select * from '{file}'").fetchall()]
 
 
 def values_of(dataset: Dataset, dimension: str) -> tuple[str, ...]:
@@ -122,4 +123,4 @@ def values_of(dataset: Dataset, dimension: str) -> tuple[str, ...]:
     d = dataset.dimensions[dimension]
     file = dataset.tables[d.table].file
     sql = f"select distinct {d.column} from '{file}' where {d.column} is not null order by 1"
-    return tuple(r[0] for r in duckdb.sql(sql).fetchall())
+    return tuple(r[0] for r in duckdb.connect().sql(sql).fetchall())
