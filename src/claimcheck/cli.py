@@ -18,8 +18,14 @@ def main(argv: list[str] | None = None) -> None:
     run.add_argument("--scenario", action="store_true", help="run the scenario, not the questions")
     score = sub.add_parser("score", help="rescore a runs directory")
     score.add_argument("directory", type=Path)
+    serve = sub.add_parser("serve", help="the five tools over MCP on stdio")
+    serve.add_argument("--arm", choices=["A", "B", "C"], default="C")
     args = parser.parse_args(argv)
-    if args.command == "run":
+    if args.command == "serve":
+        from claimcheck.server import serve as server
+
+        server(args.arm).run()
+    elif args.command == "run":
         directory = harness.run(args.arm, args.runs, args.question, args.scenario)
         print(directory)
         print((directory / "summary.md").read_text())
