@@ -30,6 +30,7 @@ class Condition:
     statement: str
     source: str
     measure: str | None = None
+    measures: tuple[str, ...] = ()  # the measure and every ratio built on it
     dimensions: tuple[str, ...] = ()
     alternative: str | None = None
     values: tuple[str, ...] = ()
@@ -48,6 +49,11 @@ class Conditions:
     @property
     def by_id(self) -> dict[str, Condition]:
         return {c.id: c for c in self.items}
+
+    @property
+    def defaults(self) -> dict[str, str]:
+        """Dimension to default value, from the default_reading conditions."""
+        return {c.dimensions[0]: c.default for c in self.items if c.kind == "default_reading"}
 
     def bound_to(self, operation: str) -> tuple[Condition, ...]:
         """The conditions whose `fires_on` includes the operation, in document order."""
@@ -69,6 +75,7 @@ def _condition(item: dict, dataset: Dataset) -> Condition:
     key = item["id"]
     applies = item["applies_to"]
     dims = applies.get("dimensions", [applies["dimension"]] if "dimension" in applies else [])
+    measure = applies.get("measure")
     c = Condition(
         id=key,
         kind=item["kind"],
@@ -76,7 +83,8 @@ def _condition(item: dict, dataset: Dataset) -> Condition:
         authority=item["authority"],
         statement=item["statement"],
         source=item["source"],
-        measure=applies.get("measure"),
+        measure=measure,
+        measures=_with_ratios(measure, dataset),
         dimensions=tuple(dims),
         alternative=item.get("alternative"),
         values=tuple(item.get("values", ())),
@@ -104,6 +112,13 @@ def _condition(item: dict, dataset: Dataset) -> Condition:
         periods = values_of(dataset, dataset.period.name)
         _require(edge[0] in periods, f"{key}.{name}: {edge[0]} is not a {dataset.period.name}")
     return c
+
+
+def _with_ratios(measure: str | None, dataset: Dataset) -> tuple[str, ...]:
+    if measure is None:
+        return ()
+    ratios = [m.name for m in dataset.measures.values() if measure in (m.numerator, m.denominator)]
+    return (measure, *ratios)
 
 
 def _require(ok: bool, message: str) -> None:
