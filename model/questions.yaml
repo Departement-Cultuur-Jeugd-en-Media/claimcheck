@@ -1,0 +1,146 @@
+# The question set of the experiment (docs/002 section 10). Unit questions run in a fresh
+# session each; the scenario runs as one session, in order. `expect` says what a correct
+# finding must contain; the numbers are read from the data in tests/test_data.py's terms.
+questions:
+  - id: q01
+    question: "Vergelijk het aantal leden van de jeugdbewegingen in Leuven en Gent."
+    kind: comparison
+    expect:
+      operations: [compare_across_places]
+      conditions: [vergelijk-per-100-jongeren]
+      refusal: false
+      numbers: [29.4, 25.3]
+
+  - id: q02
+    question: "Hoeveel leden hebben de jeugdbewegingen in het Waals Gewest?"
+    kind: refusal
+    expect:
+      operations: [filter]
+      conditions: [wallonie-zit-er-niet-in]
+      refusal: true
+
+  - id: q03
+    question: "Hoeveel leden telden de jeugdbewegingen in werkjaar 2024-2025?"
+    kind: plain
+    expect:
+      operations: [use]
+      conditions: [leden-zonder-leiding]
+      refusal: false
+      numbers: [217082]
+
+  - id: q04
+    question: "Hoe evolueerde het aantal leden van de jeugdbewegingen sinds 2017?"
+    kind: plain
+    expect:
+      operations: [over_time]
+      conditions: [leden-is-een-standcijfer]
+      refusal: false
+
+  - id: q05
+    question: "Hoeveel leden telden de jeugdbewegingen in totaal, alle werkjaren van 2017-2018 tot 2024-2025 samen?"
+    kind: refusal
+    expect:
+      operations: [over_time]
+      conditions: [leden-is-een-standcijfer]
+      refusal: true
+
+  - id: q06
+    question: "Welke koepels groeiden en welke krompen tussen werkjaar 2023-2024 en 2024-2025?"
+    kind: plain
+    expect:
+      operations: [group, derive]
+      conditions: [koepels-scharnierjaar-2024-2025]
+      refusal: false
+
+  - id: q07
+    question: "Hoeveel leden telt Chiro?"
+    kind: plain
+    expect:
+      operations: [filter, default]
+      conditions: [zonder-periode-het-laatste-werkjaar]
+      refusal: false
+      numbers: [89185]
+
+  - id: q08
+    question: "Hoeveel leiding telde Scouts en Gidsen Vlaanderen in werkjaar 2024-2025?"
+    kind: plain
+    expect:
+      operations: [filter]
+      refusal: false
+      numbers: [12128]
+
+  - id: q09
+    question: "Welke gemeenten in Limburg hebben de meeste leden per 100 jongeren in werkjaar 2024-2025?"
+    kind: plain
+    expect:
+      operations: [group, filter]
+      conditions: [ratio-zonder-noemer, gemeente-is-de-gemeente-van-de-groep]
+      refusal: false
+
+  - id: q10
+    question: "Hoeveel leden telden de jeugdbewegingen per provincie in werkjaar 2024-2025?"
+    kind: plain
+    expect:
+      operations: [group]
+      conditions: [gemeente-is-de-gemeente-van-de-groep]
+      refusal: false
+      numbers: [58401, 50107]
+
+  - id: q11
+    question: "Hoe oud is de leiding van de jeugdbewegingen gemiddeld?"
+    kind: void
+    expect:
+      refusal: false
+      gaps: [leeftijd]
+
+  - id: q12
+    question: "Hoeveel leden kwamen er bij of gingen er af tussen werkjaar 2019-2020 en 2024-2025?"
+    kind: plain
+    expect:
+      operations: [derive]
+      refusal: false
+      numbers: [218136, 217082]
+
+scenarios:
+  - id: beleidsnota-jeugdbewegingen
+    situation: >
+      Een beleidsmedewerker bereidt een beleidsnota voor, of een gesprek met de koepels,
+      en kan verwijzen naar Jeugdbewegingen in cijfers.
+    turns:
+      - id: s1
+        question: "Hoe evolueerde het aantal leden en leiding van de jeugdbewegingen de voorbije tien jaar?"
+        expect:
+          operations: [over_time]
+          conditions: [reeks-begint-in-2017-2018]
+          refusal: false
+      - id: s2
+        question: "Welke jeugdbewegingen groeien en welke krimpen?"
+        expect:
+          operations: [group, derive]
+          conditions: [koepels-scharnierjaar-2024-2025]
+          refusal: false
+      - id: s3
+        question: "Groeit het ledenaantal sneller of trager dan het aantal kinderen en jongeren in die leeftijd?"
+        expect:
+          operations: [derive, compare_across_measures]
+          refusal: false
+      - id: s4
+        question: "In welke regio's of gemeenten daalt het aantal leiding terwijl het aantal leden stijgt?"
+        expect:
+          operations: [group, derive]
+          conditions: [gemeente-is-de-gemeente-van-de-groep]
+          refusal: false
+      - id: s5
+        question: "Wat verklaart die daling van de leiding?"
+        expect:
+          refusal: false
+          data_statements: true
+          model_statements: true
+          gaps: [leeftijd]
+      - id: s6
+        question: "Zet dit om in een antwoordtekst voor de parlementaire vraag."
+        expect:
+          draft: true
+          draft_untraced: 0
+          draft_marker: true
+          draft_sources: true

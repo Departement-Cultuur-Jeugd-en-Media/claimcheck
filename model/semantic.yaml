@@ -1,0 +1,53 @@
+dataset:
+  name: jeugdbewegingen
+  title: Ledenaantallen van de jeugdbewegingen
+  owner: Departement Cultuur, Jeugd en Media
+  covers: >
+    Leden en leiding van de jeugdbewegingen die aan de erkende koepels rapporteren,
+    per groep en per werkjaar vanaf 2017-2018, en de bevolking per gemeente en
+    kalenderjaar waartegen ze worden afgezet. Vlaanderen en Brussel; een groep kan
+    elders gevestigd zijn.
+
+tables:
+  ledenaantallen: { file: data/ledenaantallen.parquet, grain: one row per groep, werkjaar and type_deelnemer }
+  bevolking:      { file: data/bevolking.parquet,      grain: one row per gemeente and jaar }
+  gemeenten:      { file: data/gemeenten.parquet,      grain: one row per gemeente }
+  groepen:        { file: data/groepen.parquet,        grain: one row per groep }
+
+joins:
+  - { left: ledenaantallen.nis_code,  right: gemeenten.nis_code }
+  - { left: ledenaantallen.groep_id,  right: groepen.groep_id }
+  - { left: ledenaantallen.nis_code,  right: bevolking.nis_code, and: ledenaantallen.jaar = bevolking.jaar }
+
+measures:
+  leden:
+    label: Leden en leiding
+    table: ledenaantallen
+    expression: sum(aantal)
+    kind: stock
+    per: leden_per_100_jongeren
+  jongeren_7_18:
+    label: Jongeren van 7 tot 18 jaar
+    table: bevolking
+    expression: sum(inwoners_7_18)
+    kind: stock
+  inwoners:
+    label: Inwoners
+    table: bevolking
+    expression: sum(inwoners_totaal)
+    kind: stock
+  leden_per_100_jongeren:
+    label: Leden per 100 jongeren van 7 tot 18
+    kind: ratio
+    numerator: leden
+    denominator: jongeren_7_18
+    scale: 100
+
+dimensions:
+  werkjaar:       { table: ledenaantallen, column: werkjaar,       role: period }
+  type_deelnemer: { table: ledenaantallen, column: type_deelnemer, values: [Leden, Leiding] }
+  gemeente:       { table: gemeenten,      column: gemeente,       role: place }
+  provincie:      { table: gemeenten,      column: provincie,      role: place }
+  gewest:         { table: gemeenten,      column: gewest,         role: place }
+  koepel:         { table: groepen,        column: koepel }
+  groep:          { table: groepen,        column: naam }
