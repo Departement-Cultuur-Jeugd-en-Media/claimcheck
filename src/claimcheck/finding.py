@@ -60,9 +60,10 @@ def trace_numbers(
     as English (3,506 and 29.4); the sign is ignored; a werkjaar or a year is a period, not a
     number; a number that occurs in one of the `known` strings (a measure's label) is found."""
     cells = {abs(v) for r in rows for v in r.values() if type(v) in (int, float)}
+    known_numbers = {n for k in known for n in NUMBER.findall(k)}
     found, missing = [], []
     for token in NUMBER.findall(PERIOD.sub(" ", text)):
-        ok = any(token in k for k in known) or any(
+        ok = token in known_numbers or any(
             round(c, p) == v for v, p in _readings(token) for c in cells
         )
         (found if ok else missing).append(token)

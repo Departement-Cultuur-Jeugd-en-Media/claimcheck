@@ -47,7 +47,8 @@ class Session:
         for m in d.measures.values():
             via = f", vergelijk plaatsen via {m.per}" if m.per else ""
             parts = f"{m.numerator} / {m.denominator} x {m.scale}" if m.kind == "ratio" else ""
-            lines.append(f"- {m.name}: {m.label} ({m.kind}{via}) {parts}".rstrip())
+            where = " in gemeenten met een groep" if m.table not in (None, d.period.table) else ""
+            lines.append(f"- {m.name}: {m.label}{where} ({m.kind}{via}) {parts}".rstrip())
         lines += ["", "Dimensies:"]
         for name, dim in d.dimensions.items():
             values = values_of(d, name)
@@ -62,7 +63,10 @@ class Session:
         return "\n".join(lines)
 
     def query(self, spec: Query) -> Result | Refusal | Error:
-        """Run a query spec for the open question. An Error records a gap for the name asked."""
+        """Run a query spec for the open question, opening one without a text if none is open.
+        An Error records a gap for the name asked."""
+        if self._question is None:
+            self.ask("")
         enforce = self.arm == "C"
         outcome = run(
             f"q{self._count + 1}",
@@ -113,9 +117,17 @@ class Session:
         refusal = next((o for o in outcomes if isinstance(o, Refusal)), None)
         labels = [m.label for m in self.dataset.measures.values()]
         finding = assemble(
-            q.text, reading, self.dataset.covers, statements, rows, q.gaps, operations, verdicts,
-            refusal, labels,
-        )  # fmt: skip
+            q.text,
+            reading,
+            self.dataset.covers,
+            statements,
+            rows,
+            q.gaps,
+            operations,
+            verdicts,
+            refusal,
+            labels,
+        )
         self.findings.append(finding)
         return finding
 

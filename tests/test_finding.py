@@ -57,3 +57,11 @@ def test_a_data_statement_citing_an_unknown_query_is_dropped():
     statement = Statement("Gent telt 8566 leden.", basis="data", queries=("q9",))
     finding = assemble("q", "lezing", "scope", [statement], {}, (), (), (), None)
     assert finding.data == () and finding.dropped[0].number == "8566"
+
+
+def test_a_known_label_matches_whole_numbers_only():
+    known = ["Leden per 100 jongeren van 7 tot 18"]
+    assert trace_numbers("18 gemeenten en 1 met nul, per 100 jongeren.", ROWS, known) == (
+        ["18", "100"],
+        ["1"],
+    )

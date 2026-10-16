@@ -132,3 +132,9 @@ def test_arm_b_applies_no_defaults_and_checks_nothing(dataset, doc):
     result = session.query(Query(measure="leden", filters=(Filter("koepel", ("chiro",)),)))
     assert isinstance(result, Result) and result.verdicts == ()
     assert all(o.name != "default" for o in result.claim.operations)
+
+
+def test_a_query_before_ask_opens_a_question_of_its_own(session):
+    result = session.query(Query(measure="leden"))
+    assert isinstance(result, Result)
+    assert session.finalize("", []).question == ""
