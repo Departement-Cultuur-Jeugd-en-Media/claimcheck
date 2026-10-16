@@ -9,27 +9,36 @@ are what make the scenario's fifth and sixth questions work here: claimcheck bri
 ## Start the server
 
 ```bash
-uv run claimcheck serve --arm C
+uv run claimcheck serve --arm C --port 8765
 ```
 
 One process, one dataset, one session; the arm is chosen at start-up (`A`: semantic model only,
-`B`: plus the conditions as prose, `C`: plus the checker). The server speaks MCP over stdio.
+`B`: plus the conditions as prose, `C`: plus the checker). Without `--port` the server speaks
+MCP over stdio; with it, streamable HTTP on all interfaces at `/mcp`, which is what a chat
+client in a container needs.
 
 ## Point OpenWebUI at it
 
-OpenWebUI reaches MCP servers through its tool-server proxy, `mcpo`, which turns an MCP server
-into an OpenAPI endpoint:
+Tested with OpenWebUI 0.12 running in Docker on the same machine.
 
-```bash
-uvx mcpo --port 8000 -- uv run --project /path/to/claimcheck claimcheck serve --arm C
-```
+1. *Beheerdersinstellingen → Integraties → Externe gereedschapsservers → +*.
+2. Type *MCP (Streamable HTTP)*, name `claimcheck`, URL
+   `http://host.docker.internal:8765/mcp`, authentication *Geen*. *Controleer verbinding*
+   answers "Connectie succesvol". Save the connection, then save the page.
+3. In a chat, open *Integraties* in the input bar, *Gereedschappen*, and switch `claimcheck` on.
 
-Then in OpenWebUI: *Settings → Tools → Add connection*, URL `http://localhost:8000`, and enable
-the tools for the model you chat with. Give the model the analyst's instructions from
-`src/claimcheck/prompts/analyst.md` as its system prompt, so it knows to call `describe` first,
-to query one place per comparison, and what `basis: model` means.
+Give the model the analyst's instructions from `src/claimcheck/prompts/analyst.md` as its
+system prompt, or say in the question itself to call `describe` first, to query one place per
+comparison, to declare the comparison with `compare` and to close with `finalize`.
 
 ## What to expect
+
+![The Leuven and Gent question in OpenWebUI, answered through the five tools](assets/openwebui-leuven-gent.jpg)
+
+Above: Claude Haiku 5.5 in OpenWebUI, with the claimcheck tools on. It called `describe`, two
+`query` calls (one per gemeente), `compare` and `finalize`, answered on leden per 100 jongeren
+rather than on the raw count, and carried the owner's sentence that the gemeente is the
+gemeente of the group, not of the member.
 
 - `describe` returns the scope, the measures, the dimensions with their values and, in arms B
   and C, the owner's sentences.
@@ -42,4 +51,4 @@ to query one place per comparison, and what `basis: model` means.
 - `check_draft` takes the text the host wrote and says which numbers trace to a data statement
   of a finding in this session, and whether the text is marked as a concept and lists sources.
 
-A screenshot of the Leuven and Gent question in OpenWebUI is still to be added.
+The server reads `model/` and `data/` relative to the repository, so run it from a checkout.

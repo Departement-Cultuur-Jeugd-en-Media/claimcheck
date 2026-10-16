@@ -19,13 +19,19 @@ def main(argv: list[str] | None = None) -> None:
     run.add_argument("--into", type=Path, help="an earlier runs directory to resume")
     score = sub.add_parser("score", help="rescore a runs directory")
     score.add_argument("directory", type=Path)
-    serve = sub.add_parser("serve", help="the five tools over MCP on stdio")
+    serve = sub.add_parser("serve", help="the five tools over MCP, on stdio or over HTTP")
     serve.add_argument("--arm", choices=["A", "B", "C"], default="C")
+    serve.add_argument(
+        "--port", type=int, help="serve streamable HTTP on this port instead of stdio"
+    )
     args = parser.parse_args(argv)
     if args.command == "serve":
         from claimcheck.server import serve as server
 
-        server(args.arm).run()
+        if args.port:
+            server(args.arm).run(transport="http", host="0.0.0.0", port=args.port)
+        else:
+            server(args.arm).run()
     elif args.command == "run":
         directory = harness.run(args.arm, args.runs, args.question, args.scenario, into=args.into)
         print(directory)
