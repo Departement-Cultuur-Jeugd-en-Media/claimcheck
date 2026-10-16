@@ -70,7 +70,8 @@ def _period_clause(query: Query, period) -> str:
     col = f"{period.table}.{period.column}"
     if query.change is not None:
         return f"{col} in ({_values(query.change)})"
-    return f"{col} between '{query.period.start}' and '{query.period.end}'"
+    start, end = _values([query.period.start]), _values([query.period.end])
+    return f"{col} between {start} and {end}"
 
 
 def _value(m: Measure, dataset: Dataset, hub: str) -> str:

@@ -191,3 +191,26 @@ def test_a_warning_rides_along_with_the_rows_and_the_after_phase_sees_them(datas
     result = run(dataset, con, LEUVEN_GENT, check=check)
     assert isinstance(result, Result) and result.verdicts == (verdict,)
     assert seen == [None, result.rows]
+
+
+@pytest.mark.parametrize(
+    ("query", "asked"),
+    [
+        (Query(measure="leden", period=Period(start="x' or '1'='1")), "x' or '1'='1"),
+        (Query(measure="leden", period=Period(start="2024-25")), "2024-25"),
+        (Query(measure="leden", period=Period(start="2024-2025", end="2019-2020")), "2024-2025"),
+        (Query(measure="leden", change=("2025-2026", "2023-2024")), "2025-2026"),
+    ],
+)
+def test_a_malformed_or_reversed_period_is_an_error_not_sql(dataset, con, query, asked):
+    error = run(dataset, con, query)
+    assert isinstance(error, Error) and error.asked == asked
+
+
+def test_a_filter_on_werkjaar_sets_the_period_instead_of_the_default(dataset, con):
+    query = Query(measure="leden", filters=(Filter("werkjaar", ("2019-2020", "2020-2021")),))
+    result = run(dataset, con, query, defaults={"werkjaar": "latest"})
+    assert [r["value"] for r in result.rows] == [257989 + 262874]
+    assert all(o.name != "default" for o in result.claim.operations)
+    over_time = next(o for o in result.claim.operations if o.name == "over_time")
+    assert over_time.span == ("2019-2020", "2020-2021")

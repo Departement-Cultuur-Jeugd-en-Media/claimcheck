@@ -2,6 +2,7 @@
 # Copyright 2026 Luk Verhelst
 """The engine: a query spec resolved, defaulted, checked, run on DuckDB (spec section 5)."""
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 
@@ -58,6 +59,7 @@ class Error:
 
 
 Checker = Callable[..., Sequence]
+WERKJAAR = re.compile(r"\d{4}-\d{4}")
 
 
 def connect(dataset: Dataset) -> duckdb.DuckDBPyConnection:
@@ -107,6 +109,13 @@ def resolve(query: Query, dataset: Dataset) -> Error | None:
     for w in query.change or ():
         if w not in values_of(dataset, dataset.period.name):
             return Error(w, f"{dataset.period.name} has no value {w}")
+    bounds = tuple(b for b in (query.period.start, query.period.end) if b) if query.period else ()
+    for b in bounds:
+        if not WERKJAAR.fullmatch(b):
+            return Error(b, f"a {dataset.period.name} is written as 2024-2025, not {b}")
+    for pair in (bounds, query.change or ()):
+        if len(pair) == 2 and pair[0] > pair[1]:
+            return Error(pair[0], f"{pair[0]} comes after {pair[1]}")
     return None
 
 
@@ -120,7 +129,10 @@ def apply_defaults(
         f"select min({col}), max({col}) from {dataset.period.table}"
     ).fetchone()
     applied, filters, period = [], list(query.filters), query.period
-    if period is None and query.change is None:
+    on_period = [v for f in filters if f.dimension == period_name for v in f.values]
+    if period is None and on_period:
+        period = Period(min(on_period), max(on_period))
+    elif period is None and query.change is None:
         default = defaults.get(period_name)
         period = Period(latest=True) if default == "latest" else Period(default, default)
         if default is not None:
