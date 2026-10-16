@@ -67,7 +67,7 @@ def call(session: Session, name: str, data: dict):
             statements = [parse(Statement, s) for s in data["statements"]]
             return session.finalize(data["reading"], statements)
         return {"error": f"unknown tool {name}"}
-    except (KeyError, TypeError, ValueError) as e:
+    except (AttributeError, KeyError, TypeError, ValueError) as e:
         return {"error": f"{type(e).__name__}: {e}"}
 
 

@@ -31,28 +31,34 @@ def run(
     question_id: str | None = None,
     scenario: bool = False,
     out: Path = ROOT / "runs",
+    into: Path | None = None,
+    client=None,
 ) -> Path:
     """Run every unit question (or one), or the scenarios' turns in order in one session, for
     each arm `runs` times in fresh sessions, four at a time. Writes one json per turn under
     `<out>/<timestamp>/<question>/<arm>/<n>.json` with the trace and the finding, or the host's
-    draft and its check; then the scores and the summary. Returns the directory."""
+    draft and its check; then the scores and the summary. Returns the directory. Given `into`,
+    an earlier directory, sessions whose records all exist are skipped, so a run resumes. A
+    failing run is recorded, not raised."""
     import anthropic
 
-    client = anthropic.Anthropic()
+    client = client or anthropic.Anthropic()
     dataset = semantic.load(ROOT / "model" / "semantic.yaml")
     doc = conditions.load(ROOT / "model" / "conditions.yaml", dataset)
     unit, scenarios = questions()
     sessions = [s["turns"] for s in scenarios] if scenario else [[q] for q in unit]
     sessions = [s for s in sessions if question_id in (None, s[0]["id"])]
     todo = [(turns, a, n) for turns in sessions for a in arms for n in range(1, runs + 1)]
-    directory = out / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    directory = into or out / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     def one(item):
         turns, arm, n = item
+        if all((directory / turn["id"] / arm / f"{n}.json").exists() for turn in turns):
+            return
         session = Session(dataset, doc, arm=arm)
         for turn in turns:
             t0, usage = time.time(), []
-            record = {"question": turn["id"], "arm": arm, "run": n, "model": MODEL}
+            record = {"question": turn["id"], "arm": arm, "run": n, "model": MODEL, "error": None}
             try:
                 if "draft" in turn["expect"]:
                     text, used = write_draft(session.findings, client)
@@ -64,8 +70,8 @@ def run(
                     found = asdict(finding) if finding else None
                     record.update(finding=found, messages=trace["messages"])
                     usage = trace["usage"]
-            except anthropic.APIError as e:
-                record.update(error=str(e), finding=None, messages=[])
+            except Exception as e:  # noqa: BLE001 - one broken run must not end the batch
+                record.update(error=f"{type(e).__name__}: {e}", finding=None, messages=[])
             record["seconds"] = round(time.time() - t0, 1)
             record["cost"] = sum(u.get(k, 0) * p for u in usage for k, p in PRICE.items()) / 1e6
             path = directory / turn["id"] / arm / f"{n}.json"

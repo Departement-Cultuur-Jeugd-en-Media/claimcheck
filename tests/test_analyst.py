@@ -87,3 +87,17 @@ def test_the_host_draft_is_the_text_of_one_call_without_tools(session):
     client = Replay([{"content": [{"type": "text", "text": "Concept. Leuven telt 3.506 leden."}]}])
     text, usage = write_draft([], client)
     assert text.startswith("Concept") and "tools" not in client.requests[0]
+
+
+def test_a_statement_sent_as_a_string_is_an_error_result_not_a_crash(session):
+    client = Replay(
+        [
+            turn(
+                use("t1", "finalize", {"reading": "x", "statements": ["Leuven telt 3.506 leden."]})
+            ),
+            turn(use("t2", "finalize", {"reading": "x", "statements": []})),
+        ]
+    )
+    finding, trace = answer(session, "?", client)
+    assert "error" in client.requests[1]["messages"][2]["content"][0]["content"]
+    assert finding is not None

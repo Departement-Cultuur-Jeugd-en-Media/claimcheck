@@ -38,16 +38,33 @@ model/
   semantic.yaml      the semantic layer: measures, dimensions, grain, kind, joins
   conditions.yaml    the conditions of use, each bound to an operation and an authority
   questions.yaml     the question set the experiment runs, with what a correct finding must contain
-src/claimcheck/      the reference implementation: query, claim, conditions, checker, analyst, harness, server
-tests/               the two failures above and their relatives, as tests that run without a model
-docs/                the technical notes behind the design
+src/claimcheck/
+  semantic.py        the semantic model, loaded and validated
+  conditions.py      the conditions document, loaded, validated, indexed by operation
+  query.py, sql.py   the engine: a query spec resolved, defaulted, compiled to SQL on DuckDB
+  claim.py           the operations a reading consists of
+  checker.py         one verdict per operation and condition, before and after the query
+  finding.py         statements by basis, number tracing, gaps, the finding
+  session.py         one conversation: describe, query, compare, finalize, check_draft
+  draft.py           the draft check: which numbers in the host's text are covered
+  analyst.py         the model with the four tools, and the trace of every run
+  harness.py         the experiment: arms, runs, scores, summary (`claimcheck run`, `claimcheck score`)
+  server.py          the five tools over MCP (`claimcheck serve`)
+tests/               every module, as tests that run without a model; recorded traces under tests/traces/
+docs/                the technical notes behind the design, and the runs under docs/runs/
 ```
 
-The layout is the plan; modules land one at a time and each is short enough to read in one sitting.
+Every module is short enough to read in one sitting.
 
 ## The experiment
 
-Two arms, same analyst, same questions, five runs each. In one arm the analyst has the semantic layer and nothing else. In the other it has the semantic layer and the conditions, enforced. If the second arm does not do better on applying the conditions, refusing when it should and giving the same answer twice, the idea fails, and it fails cheaply. The question set, the measures and the scoring sheet are in `model/questions.yaml` and `docs/`.
+Three arms, same analyst, same questions, five runs each. In arm A the analyst has the semantic layer and nothing else. In arm B it also reads the conditions as the owner's prose. In arm C the conditions are enforced: the engine applies their defaults and the checker returns a verdict on every operation. B against C is the thesis; A against B is the control. If arm C does not do better on applying the conditions, refusing when it should and giving the same answer twice, the idea fails, and it fails cheaply. The question set and the scoring are in `model/questions.yaml` and `docs/002-specification.md` section 10; the runs are in [docs/runs/](docs/runs/): the [kill test](docs/runs/2026-10-16-kill-test.md) on the unit questions and the [scenario run](docs/runs/2026-10-16-scenario.md).
+
+```bash
+uv run claimcheck run --arm A B C --runs 5              # the unit questions
+uv run claimcheck run --arm A B C --runs 5 --scenario   # the scenario, six turns in one session
+uv run claimcheck serve --arm C                          # the five tools over MCP, see docs/004-openwebui.md
+```
 
 ## Status
 

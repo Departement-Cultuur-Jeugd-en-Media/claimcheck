@@ -16,6 +16,7 @@ def main(argv: list[str] | None = None) -> None:
     run.add_argument("--runs", type=int, default=5)
     run.add_argument("--question", help="one question id, e.g. q01")
     run.add_argument("--scenario", action="store_true", help="run the scenario, not the questions")
+    run.add_argument("--into", type=Path, help="an earlier runs directory to resume")
     score = sub.add_parser("score", help="rescore a runs directory")
     score.add_argument("directory", type=Path)
     serve = sub.add_parser("serve", help="the five tools over MCP on stdio")
@@ -26,7 +27,7 @@ def main(argv: list[str] | None = None) -> None:
 
         server(args.arm).run()
     elif args.command == "run":
-        directory = harness.run(args.arm, args.runs, args.question, args.scenario)
+        directory = harness.run(args.arm, args.runs, args.question, args.scenario, into=args.into)
         print(directory)
         print((directory / "summary.md").read_text())
     else:
