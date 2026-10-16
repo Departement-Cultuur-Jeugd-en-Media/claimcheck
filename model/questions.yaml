@@ -9,7 +9,7 @@ questions:
       operations: [compare_across_places]
       conditions: [vergelijk-per-100-jongeren]
       refusal: false
-      numbers: [29.4, 25.3]
+      numbers: [27.0, 25.1]  # no period named, so the latest werkjaar holds: 2025-2026
 
   - id: q02
     question: "Hoeveel leden hebben de jeugdbewegingen in het Waals Gewest?"
