@@ -422,7 +422,7 @@ scenarios:
           draft_sources: true
 ```
 
-Scores per finding, computed from `expect`: *conditions* (every expected id is among the verdicts), *refusal* (matches), *numbers* (every expected number survives), *answered* (a finding exists), *boundary* (the basis and gap expectations hold), *draft* (the draft check is clean). Across the five runs of one question: *sameness* (identical claims; identical surviving numbers). Cost and latency are logged per run. Expert scoring of the prose is a later round and not automated.
+Scores per finding, computed from `expect`: *conditions* (every expected id is among the verdicts), *refusal* (a query was refused, that is a blocking verdict failed, exactly when expected; a model that reads the prose and never asks for the forbidden reading scores the condition as passed and the refusal as not needed), *numbers* (every expected number survives), *answered* (a finding exists), *boundary* (the basis and gap expectations hold), *draft* (the draft check is clean). Across the five runs of one question: *sameness* (identical claims; identical surviving numbers). Cost and latency are logged per run. Expert scoring of the prose is a later round and not automated.
 
 ## 11. Out of scope in version 0
 

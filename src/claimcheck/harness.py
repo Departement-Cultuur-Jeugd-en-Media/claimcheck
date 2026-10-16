@@ -59,7 +59,6 @@ def run(
             "finding": asdict(finding) if finding else None,
             "messages": trace["messages"],
         }
-        record["score"] = score(record["finding"], q["expect"])
         path = directory / q["id"] / arm / f"{n}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(record, ensure_ascii=False, indent=1, default=str))
@@ -73,12 +72,13 @@ def run(
 def write_scores(directory: Path) -> str:
     """Read every run under the directory, write `scores.csv` and `summary.md`, return the text."""
     records = [json.loads(p.read_text()) for p in sorted(directory.glob("*/*/*.json"))]
+    expects = {q["id"]: q["expect"] for q in questions()[0]}
     rows = [
         {
             "question": r["question"],
             "arm": r["arm"],
             "run": r["run"],
-            **r["score"],
+            **score(r["finding"], expects[r["question"]]),
             "seconds": r["seconds"],
             "cost": r["cost"],
         }

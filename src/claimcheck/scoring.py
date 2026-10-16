@@ -35,7 +35,10 @@ def score(finding: dict | None, expect: dict) -> dict:
     if "conditions" in expect:
         row["conditions"] = set(expect["conditions"]) <= verdicts
     if "refusal" in expect:
-        row["refusal"] = (finding["refusal"] is not None) == expect["refusal"]
+        refused = any(
+            v["status"] == "failed" and v["authority"] == "blocks" for v in finding["verdicts"]
+        )
+        row["refusal"] = refused == expect["refusal"]
     if "numbers" in expect:
         row["numbers"] = all(trace_numbers(texts, [{"value": n}])[0] for n in expect["numbers"])
     checks = {

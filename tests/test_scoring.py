@@ -9,9 +9,25 @@ FINDING = {
     "model": [],
     "gaps": [],
     "claim": {"operations": [{"name": "use"}, {"name": "compare_across_places"}]},
-    "verdicts": [{"condition_id": "vergelijk-per-100-jongeren", "status": "failed"}],
+    "verdicts": [
+        {"condition_id": "vergelijk-per-100-jongeren", "status": "failed", "authority": "warns"}
+    ],
     "refusal": None,
 }
+REFUSED = {
+    **FINDING,
+    "verdicts": [
+        {"condition_id": "wallonie-zit-er-niet-in", "status": "failed", "authority": "blocks"}
+    ],
+}
+
+
+def test_a_refusal_is_a_failed_blocking_verdict_whatever_the_model_did_next():
+    assert score(REFUSED, {"refusal": True})["refusal"] is True
+    assert score(FINDING, {"refusal": True})["refusal"] is False
+    assert score(REFUSED, {"refusal": False})["refusal"] is False
+
+
 EXPECT = {
     "operations": ["compare_across_places"],
     "conditions": ["vergelijk-per-100-jongeren"],
