@@ -64,8 +64,10 @@ def test_a_bad_tool_input_is_an_error_result_and_the_loop_goes_on(session):
     finding, trace = answer(session, "Hoe oud is de leiding?", client)
     first = client.requests[1]["messages"][2]["content"][0]
     assert first["tool_use_id"] == "t1" and "error" in first["content"]
+    assert first["is_error"] is True
     second = client.requests[2]["messages"][4]["content"][0]
-    assert json.loads(second["content"])["type"] == "Error"
+    assert json.loads(second["content"])["type"] == "Error" and "is_error" not in second
+    assert trace["usage"][0]["stop_reason"] == "tool_use"
     assert finding.gaps[0].asked == "leeftijd"
 
 

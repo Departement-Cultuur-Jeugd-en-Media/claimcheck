@@ -126,7 +126,7 @@ def test_the_summary_is_one_table_arm_by_measure():
     ]
     text = summary(rows, {("q01", "C"): {"claims": True, "numbers": False}, ("q01", "A"): {}})
     assert (
-        "| arm | answered | numbers | same claims | same numbers | runs | s/run | $/run |" in text
+        "| arm | answered | numbers | same claims | same numbers | runs | s/turn | $/turn |" in text
     )
     assert "| C | 1.00 | 0.50 | 1.00 | 0.00 | 2 | 15 | 0.20 |" in text
     assert "| A | 0.00 | n/a | n/a | n/a | 1 | 5 | 0.10 |" in text
@@ -149,3 +149,15 @@ def test_a_draft_turn_scores_on_the_check_not_on_a_finding():
     leaky = {**clean, "untraced": ["12.072"]}
     assert score(None, expect, leaky)["draft"] is False
     assert score(None, expect, None)["answered"] is False
+
+
+def test_a_refusal_not_needed_scores_as_not_applicable():
+    complied = {
+        **FINDING,
+        "verdicts": [
+            {"condition_id": "leden-is-een-standcijfer", "status": "passed", "authority": "blocks"}
+        ],
+    }
+    expect = {"refusal": True, "conditions": ["leden-is-een-standcijfer"]}
+    assert score(complied, expect)["refusal"] is None
+    assert score(FINDING, expect)["refusal"] is False

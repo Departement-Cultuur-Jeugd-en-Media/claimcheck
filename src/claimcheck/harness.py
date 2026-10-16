@@ -87,6 +87,8 @@ def run(
 def write_scores(directory: Path) -> str:
     """Read every run under the directory, write `scores.csv` and `summary.md`, return the text."""
     records = [json.loads(p.read_text()) for p in sorted(directory.glob("*/*/*.json"))]
+    if not records:
+        return "Nothing ran."
     unit, scenarios = questions()
     turns = unit + [t for s in scenarios for t in s["turns"]]
     expects = {t["id"]: t["expect"] for t in turns}

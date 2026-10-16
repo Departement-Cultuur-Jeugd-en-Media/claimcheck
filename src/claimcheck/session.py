@@ -9,10 +9,11 @@ from dataclasses import dataclass, field
 from claimcheck.checker import Verdict, check
 from claimcheck.claim import Claim, Operation
 from claimcheck.conditions import Conditions
+from claimcheck.describe import describe
 from claimcheck.draft import DraftCheck, check_draft
 from claimcheck.finding import Finding, Gap, Statement, assemble, gap
 from claimcheck.query import Error, Query, Refusal, Result, connect, run
-from claimcheck.semantic import Dataset, values_of
+from claimcheck.semantic import Dataset
 
 
 @dataclass
@@ -36,34 +37,13 @@ class Session:
         self._question = _Question(question)
 
     def describe(self) -> str:
-        """The dataset as text a model can read: scope, measures, dimensions with their values,
-        and in arms B and C the conditions as the owner's sentences."""
-        d = self.dataset
-        lines = [f"{d.title} ({d.owner})", d.covers.strip(), "", "Maten:"]
-        for m in d.measures.values():
-            via = f", vergelijk plaatsen via {m.per}" if m.per else ""
-            parts = f"{m.numerator} / {m.denominator} x {m.scale}" if m.kind == "ratio" else ""
-            where = " in gemeenten met een groep" if m.table not in (None, d.period.table) else ""
-            lines.append(f"- {m.name}: {m.label}{where} ({m.kind}{via}) {parts}".rstrip())
-        lines += ["", "Dimensies:"]
-        for name, dim in d.dimensions.items():
-            values = values_of(d, name)
-            role = f" ({dim.role})" if dim.role else ""
-            shown = ", ".join(values) if len(values) <= 500 else ", ".join(values[:10]) + ", ..."
-            lines.append(f"- {name}{role}, {len(values)} waarden: {shown}")
-        if self.arm != "A":
-            lines += ["", "Voorwaarden van de eigenaar:"]
-            lines += [
-                f"- {c.statement} {c.alternative or ''}".rstrip() for c in self.conditions.items
-            ]
-        return "\n".join(lines)
+        """The dataset as text a model can read; in arms B and C with the owner's sentences."""
+        return describe(self.dataset, None if self.arm == "A" else self.conditions)
 
     def query(self, spec: Query) -> Result | Refusal | Error:
         """Run a query spec for the open question, opening one without a text if none is open.
         An Error records a gap for the name asked."""
-        if self._question is None:
-            self.ask("")
-        enforce = self.arm == "C"
+        q, enforce = self._open(), self.arm == "C"
         outcome = run(
             f"q{self._count + 1}",
             spec,
@@ -73,17 +53,18 @@ class Session:
             check=self._check if enforce else lambda claim, rows=None: (),
         )
         if isinstance(outcome, Error):
-            self._question.gaps.append(gap(outcome.asked))
+            q.gaps.append(gap(outcome.asked))
         else:
             self._count += 1
-            self._question.outcomes[outcome.id] = outcome
+            q.outcomes[outcome.id] = outcome
         return outcome
 
     def compare(self, left: str, right: str) -> list[Verdict] | Error:
         """Declare a comparison between two results of the open question: across places when
         they differ on a place dimension, across measures when they share filters and groups
         and differ on the measure. Anything else is an Error. Computes nothing."""
-        sides = [self._question.outcomes.get(i) for i in (left, right)]
+        q = self._open()
+        sides = [q.outcomes.get(i) for i in (left, right)]
         if not all(isinstance(s, Result) for s in sides):
             return Error(f"{left}, {right}", "both sides must be ids of queries that returned rows")
         ops_l, ops_r = (s.claim.operations for s in sides)
@@ -97,13 +78,13 @@ class Session:
         else:
             return Error(f"{left}, {right}", "the two sides differ on neither place nor measure")
         verdicts = self._check(Claim((op,))) if self.arm == "C" else []
-        self._question.compares.append((op, verdicts))
+        q.compares.append((op, verdicts))
         return verdicts
 
     def finalize(self, reading: str, statements: list[Statement], question: str = "") -> Finding:
-        """Close the open question with its finding, which stays on the session. A question
-        given here names a question that `query` opened without a text."""
-        q = self._question
+        """Close the open question with its finding, which stays on the session; the next tool
+        call opens the next question. A question given here names one opened without a text."""
+        q = self._open()
         q.text = q.text or question
         outcomes = list(q.outcomes.values())
         rows = {o.id: o.rows for o in outcomes if isinstance(o, Result)}
@@ -127,12 +108,18 @@ class Session:
             labels,
         )
         self.findings.append(finding)
+        self._question = None
         return finding
 
     def check_draft(self, text: str) -> DraftCheck:
         """Which numbers in a host's text trace to a data statement of a finding in this session."""
         labels = [m.label for m in self.dataset.measures.values()]
         return check_draft(text, [s.text for f in self.findings for s in f.data], labels)
+
+    def _open(self) -> _Question:
+        if self._question is None:
+            self.ask("")
+        return self._question
 
     def _check(self, claim: Claim, rows=None) -> list[Verdict]:
         return check(claim, self.conditions, rows)

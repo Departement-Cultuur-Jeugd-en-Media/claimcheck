@@ -36,7 +36,7 @@ def answer(
         response = client.messages.create(
             model=model, max_tokens=16000, system=system, tools=TOOLS, messages=messages
         ).to_dict()
-        usage.append(response.get("usage", {}))
+        usage.append({**response.get("usage", {}), "stop_reason": response.get("stop_reason")})
         messages.append({"role": "assistant", "content": response["content"]})
         uses = [b for b in response["content"] if b["type"] == "tool_use"]
         if not uses:
@@ -45,9 +45,10 @@ def answer(
         for use in uses:
             outcome = call(session, use["name"], use["input"])
             finding = outcome if isinstance(outcome, Finding) else finding
-            results.append(
-                {"type": "tool_result", "tool_use_id": use["id"], "content": dumps(outcome)}
-            )
+            result = {"type": "tool_result", "tool_use_id": use["id"], "content": dumps(outcome)}
+            if isinstance(outcome, dict) and "error" in outcome:
+                result["is_error"] = True
+            results.append(result)
         messages.append({"role": "user", "content": results})
         if finding is not None:
             break

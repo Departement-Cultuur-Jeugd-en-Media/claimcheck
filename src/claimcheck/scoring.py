@@ -50,6 +50,9 @@ def score(finding: dict | None, expect: dict, check: dict | None = None) -> dict
             v["status"] == "failed" and v["authority"] == "blocks" for v in finding["verdicts"]
         )
         row["refusal"] = refused == expect["refusal"]
+        passed = {v["condition_id"] for v in finding["verdicts"] if v["status"] == "passed"}
+        if expect["refusal"] and not refused and passed & set(expect.get("conditions", ())):
+            row["refusal"] = None  # the owner's condition was read; a refusal was not needed
     if "numbers" in expect:
         row["numbers"] = all(trace_numbers(texts, [{"value": n}])[0] for n in expect["numbers"])
     checks = {
@@ -76,9 +79,9 @@ def sameness(findings: Iterable[dict | None]) -> dict:
 
 def summary(rows: list[dict], same: dict) -> str:
     """One markdown table, arm by measure: the share of runs that pass each measure, the share
-    of questions whose runs agree, runs, seconds and dollars per run."""
+    of questions whose runs agree, runs, and seconds and dollars per turn."""
     measures = [m for m in MEASURES if any(m in r for r in rows)]
-    head = ["arm", *measures, "same claims", "same numbers", "runs", "s/run", "$/run"]
+    head = ["arm", *measures, "same claims", "same numbers", "runs", "s/turn", "$/turn"]
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for arm in sorted({r["arm"] for r in rows}):
         mine = [r for r in rows if r["arm"] == arm]

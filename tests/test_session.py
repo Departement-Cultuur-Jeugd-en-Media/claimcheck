@@ -138,3 +138,19 @@ def test_a_query_before_ask_opens_a_question_of_its_own(session):
     result = session.query(Query(measure="leden"))
     assert isinstance(result, Result)
     assert session.finalize("", []).question == ""
+
+
+def test_finalize_closes_the_question_so_the_next_one_starts_clean(session):
+    session.query(one_place("Leuven"))
+    first = session.finalize("Leuven.", [], question="Vraag een")
+    session.query(one_place("Gent"))
+    second = session.finalize("Gent.", [], question="Vraag twee")
+    assert (first.question, second.question) == ("Vraag een", "Vraag twee")
+    assert len(second.claim.operations) == len(first.claim.operations)
+    assert isinstance(session.compare("q1", "q2"), Error)
+
+
+def test_compare_and_finalize_before_any_query_do_not_raise(dataset, doc):
+    session = Session(dataset, doc, arm="C")
+    assert isinstance(session.compare("q1", "q2"), Error)
+    assert session.finalize("Niets.", []).data == ()
