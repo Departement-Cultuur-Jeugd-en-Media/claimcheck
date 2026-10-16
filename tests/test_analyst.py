@@ -79,3 +79,11 @@ def test_a_turn_without_a_tool_call_ends_the_run(session):
     client = Replay([{"content": [{"type": "text", "text": "Klaar."}], "stop_reason": "end_turn"}])
     finding, trace = answer(session, "?", client)
     assert finding is None and trace["messages"][-1]["role"] == "assistant"
+
+
+def test_the_host_draft_is_the_text_of_one_call_without_tools(session):
+    from claimcheck.analyst import write_draft
+
+    client = Replay([{"content": [{"type": "text", "text": "Concept. Leuven telt 3.506 leden."}]}])
+    text, usage = write_draft([], client)
+    assert text.startswith("Concept") and "tools" not in client.requests[0]

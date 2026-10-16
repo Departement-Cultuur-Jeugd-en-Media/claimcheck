@@ -2,7 +2,7 @@
 # Copyright 2026 Luk Verhelst
 """Scores per finding from `expect`, and sameness across runs (spec section 10)."""
 
-from claimcheck.scoring import questions, sameness, score, summary
+from claimcheck.scoring import MEASURES, questions, sameness, score, summary
 
 FINDING = {
     "data": [{"text": "Leuven telt 27,0 leden per 100 jongeren, Gent 25,1.", "basis": "data"}],
@@ -44,6 +44,7 @@ def test_a_finding_that_meets_every_expectation_scores_true_on_each():
         "refusal": True,
         "numbers": True,
         "boundary": None,
+        "draft": None,
     }
 
 
@@ -60,6 +61,7 @@ def test_no_finding_scores_false_on_answered_and_none_elsewhere():
         "refusal": None,
         "numbers": None,
         "boundary": None,
+        "draft": None,
     }
 
 
@@ -134,3 +136,16 @@ def test_the_question_set_loads_with_twelve_unit_questions_and_one_scenario():
     unit, scenarios = questions()
     assert [q["id"] for q in unit][:2] == ["q01", "q02"] and len(unit) == 12
     assert len(scenarios[0]["turns"]) == 6
+
+
+def test_a_draft_turn_scores_on_the_check_not_on_a_finding():
+    expect = {"draft": True, "draft_untraced": 0, "draft_marker": True, "draft_sources": True}
+    clean = {"traced": ["3.506"], "untraced": [], "marker": True, "sources": True}
+    assert score(None, expect, clean) == {
+        **dict.fromkeys(MEASURES),
+        "answered": True,
+        "draft": True,
+    }
+    leaky = {**clean, "untraced": ["12.072"]}
+    assert score(None, expect, leaky)["draft"] is False
+    assert score(None, expect, None)["answered"] is False

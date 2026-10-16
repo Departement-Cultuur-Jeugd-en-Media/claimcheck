@@ -12,11 +12,10 @@ from dataclasses import dataclass, field
 from claimcheck.checker import Verdict, check
 from claimcheck.claim import Claim, Operation
 from claimcheck.conditions import Conditions
+from claimcheck.draft import DraftCheck, check_draft
 from claimcheck.finding import Finding, Gap, Statement, assemble, gap
 from claimcheck.query import Error, Query, Refusal, Result, connect, run
 from claimcheck.semantic import Dataset, values_of
-
-SHAPE = ("filter", "group")
 
 
 @dataclass
@@ -131,6 +130,11 @@ class Session:
         self.findings.append(finding)
         return finding
 
+    def check_draft(self, text: str) -> DraftCheck:
+        """Which numbers in a host's text trace to a data statement of a finding in this session."""
+        labels = [m.label for m in self.dataset.measures.values()]
+        return check_draft(text, [s.text for f in self.findings for s in f.data], labels)
+
     def _check(self, claim: Claim, rows=None) -> list[Verdict]:
         return check(claim, self.conditions, rows)
 
@@ -142,4 +146,4 @@ class Session:
 
     @staticmethod
     def _shape(ops) -> set:
-        return {o for o in ops if o.name in SHAPE}
+        return {o for o in ops if o.name in ("filter", "group")}

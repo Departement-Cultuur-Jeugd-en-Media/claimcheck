@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Luk Verhelst
-"""The harness: the unit questions, run per arm N times in fresh sessions, written and scored."""
+"""The harness: the unit questions or the scenario, run per arm N times, written and scored."""
 
 import csv
 import json
@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from claimcheck import conditions, semantic
-from claimcheck.analyst import MODEL, answer
+from claimcheck.analyst import MODEL, answer, write_draft
 from claimcheck.scoring import ROOT, questions, sameness, score, summary
 from claimcheck.session import Session
 
@@ -26,42 +26,51 @@ PRICE = {
 
 
 def run(
-    arms: list[str], runs: int, question_id: str | None = None, out: Path = ROOT / "runs"
+    arms: list[str],
+    runs: int,
+    question_id: str | None = None,
+    scenario: bool = False,
+    out: Path = ROOT / "runs",
 ) -> Path:
-    """Run every unit question (or one) for each arm, `runs` times each in a fresh session, four
-    at a time; write one json per run under `<out>/<timestamp>/<question>/<arm>/<n>.json` with
-    the trace, the finding and its score; then the scores and the summary. Returns the directory."""
+    """Run every unit question (or one), or the scenarios' turns in order in one session, for
+    each arm `runs` times in fresh sessions, four at a time. Writes one json per turn under
+    `<out>/<timestamp>/<question>/<arm>/<n>.json` with the trace and the finding, or the host's
+    draft and its check; then the scores and the summary. Returns the directory."""
     import anthropic
 
     client = anthropic.Anthropic()
     dataset = semantic.load(ROOT / "model" / "semantic.yaml")
     doc = conditions.load(ROOT / "model" / "conditions.yaml", dataset)
-    unit, _ = questions()
-    wanted = [q for q in unit if question_id in (None, q["id"])]
-    todo = [(q, a, n) for q in wanted for a in arms for n in range(1, runs + 1)]
+    unit, scenarios = questions()
+    sessions = [s["turns"] for s in scenarios] if scenario else [[q] for q in unit]
+    sessions = [s for s in sessions if question_id in (None, s[0]["id"])]
+    todo = [(turns, a, n) for turns in sessions for a in arms for n in range(1, runs + 1)]
     directory = out / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     def one(item):
-        q, arm, n = item
-        t0, error = time.time(), None
-        try:
-            finding, trace = answer(Session(dataset, doc, arm=arm), q["question"], client)
-        except anthropic.APIError as e:
-            finding, trace, error = None, {"usage": [], "messages": []}, str(e)
-        record = {
-            "question": q["id"],
-            "arm": arm,
-            "run": n,
-            "model": MODEL,
-            "seconds": round(time.time() - t0, 1),
-            "cost": sum(u.get(k, 0) * p for u in trace["usage"] for k, p in PRICE.items()) / 1e6,
-            "error": error,
-            "finding": asdict(finding) if finding else None,
-            "messages": trace["messages"],
-        }
-        path = directory / q["id"] / arm / f"{n}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(record, ensure_ascii=False, indent=1, default=str))
+        turns, arm, n = item
+        session = Session(dataset, doc, arm=arm)
+        for turn in turns:
+            t0, usage = time.time(), []
+            record = {"question": turn["id"], "arm": arm, "run": n, "model": MODEL}
+            try:
+                if "draft" in turn["expect"]:
+                    text, used = write_draft(session.findings, client)
+                    check = asdict(session.check_draft(text))
+                    record.update(draft=text, check=check, finding=None, messages=[])
+                    usage = [used]
+                else:
+                    finding, trace = answer(session, turn["question"], client)
+                    found = asdict(finding) if finding else None
+                    record.update(finding=found, messages=trace["messages"])
+                    usage = trace["usage"]
+            except anthropic.APIError as e:
+                record.update(error=str(e), finding=None, messages=[])
+            record["seconds"] = round(time.time() - t0, 1)
+            record["cost"] = sum(u.get(k, 0) * p for u in usage for k, p in PRICE.items()) / 1e6
+            path = directory / turn["id"] / arm / f"{n}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(record, ensure_ascii=False, indent=1, default=str))
 
     with ThreadPoolExecutor(4) as pool:
         list(pool.map(one, todo))
@@ -72,13 +81,15 @@ def run(
 def write_scores(directory: Path) -> str:
     """Read every run under the directory, write `scores.csv` and `summary.md`, return the text."""
     records = [json.loads(p.read_text()) for p in sorted(directory.glob("*/*/*.json"))]
-    expects = {q["id"]: q["expect"] for q in questions()[0]}
+    unit, scenarios = questions()
+    turns = unit + [t for s in scenarios for t in s["turns"]]
+    expects = {t["id"]: t["expect"] for t in turns}
     rows = [
         {
             "question": r["question"],
             "arm": r["arm"],
             "run": r["run"],
-            **score(r["finding"], expects[r["question"]]),
+            **score(r["finding"], expects[r["question"]], r.get("check")),
             "seconds": r["seconds"],
             "cost": r["cost"],
         }
@@ -88,7 +99,7 @@ def write_scores(directory: Path) -> str:
         writer = csv.DictWriter(f, rows[0].keys())
         writer.writeheader()
         writer.writerows(rows)
-    keys = {(r["question"], r["arm"]) for r in records}
+    keys = {(r["question"], r["arm"]) for r in records if "draft" not in expects[r["question"]]}
     same = {
         k: sameness(r["finding"] for r in records if (r["question"], r["arm"]) == k) for k in keys
     }
