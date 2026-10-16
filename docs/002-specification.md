@@ -375,7 +375,7 @@ questions:
       operations: [compare_across_places]
       conditions: [vergelijk-per-100-jongeren]     # ids that must appear in the finding's verdicts
       refusal: false
-      numbers: [29.4, 25.3]                        # must appear in a surviving data statement
+      numbers: [27.0, 25.1]                        # must appear in a surviving data statement; the latest werkjaar in the data (2025-2026), since the question names no period
 
 scenarios:
   - id: beleidsnota-jeugdbewegingen
